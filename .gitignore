@@ -1,0 +1,8 @@
+# Build products
+lazyssh
+
+# Configuration
+*.hcl
+
+# Release builds
+lazyssh-*
