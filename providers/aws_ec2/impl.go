@@ -15,9 +15,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
-	"github.com/stephank/lazyssh/providers"
 	"golang.org/x/net/context"
+
+	"github.com/stephank/lazyssh/providers"
 )
+
+func init() {
+	providers.Register("aws_ec2", &Factory{})
+}
 
 type Factory struct{}
 

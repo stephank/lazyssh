@@ -8,8 +8,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
 	"github.com/stephank/lazyssh/providers"
 )
+
+func init() {
+	providers.Register("forward", &Factory{})
+}
 
 type Factory struct{}
 
