@@ -19,8 +19,6 @@ something to avoid conflict, create an issue for it.
 
 - Socket activation
 
-- Nix package and NixOS module
-
 - Multiple authorized keys.
 
 - Persist state so any kind of interruption can recover management of an

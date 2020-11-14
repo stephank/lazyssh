@@ -1,3 +1,6 @@
+# Version control
+.git
+
 # Build products
 lazyssh
 
@@ -6,3 +9,6 @@ lazyssh
 
 # Release builds
 lazyssh-*
+
+# Nix
+result
