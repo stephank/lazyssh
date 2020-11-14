@@ -11,18 +11,21 @@ import (
 )
 
 var (
-	FactoryMap Factories
-	once       sync.Once
+	factoryMapMu sync.Mutex
+	FactoryMap   Factories
 )
 
 // Register registers a provider factory.
 func Register(id string, f Factory) {
+	factoryMapMu.Lock()
+	defer factoryMapMu.Unlock()
 	if FactoryMap == nil {
 		FactoryMap = make(map[string]Factory)
 	}
-	once.Do(func() {
-		FactoryMap[id] = f
-	})
+	if _, dup := FactoryMap[id]; dup {
+		panic("Register called twice for provider " + id)
+	}
+	FactoryMap[id] = f
 }
 
 // Factory produces a Provider for a specific type of Machine, based on
