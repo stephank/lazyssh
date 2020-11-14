@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stephank/lazyssh/manager"
 	"github.com/stephank/lazyssh/providers"
-	"github.com/stephank/lazyssh/providers/aws_ec2"
-	"github.com/stephank/lazyssh/providers/forward"
-	"github.com/stephank/lazyssh/providers/virtualbox"
+	_ "github.com/stephank/lazyssh/providers/aws_ec2"
+	_ "github.com/stephank/lazyssh/providers/forward"
+	_ "github.com/stephank/lazyssh/providers/virtualbox"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -24,13 +24,8 @@ func main() {
 	configFile := flag.String("config", "config.hcl", "config file")
 	flag.Parse()
 
-	factories := make(providers.Factories)
-	factories["forward"] = &forward.Factory{}
-	factories["virtualbox"] = &virtualbox.Factory{}
-	factories["aws_ec2"] = &aws_ec2.Factory{}
-
 	// Parse config and always print diagnostics, but only fail on errors.
-	files, config, diags := parseConfigFile(*configFile, factories)
+	files, config, diags := parseConfigFile(*configFile, providers.FactoryMap)
 	stdoutInfo, _ := os.Stdout.Stat()
 	isTty := (stdoutInfo.Mode() & os.ModeCharDevice) != 0
 	writer := hcl.NewDiagnosticTextWriter(os.Stdout, files, 80, isTty)

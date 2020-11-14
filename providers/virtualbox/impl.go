@@ -12,8 +12,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
+
 	"github.com/stephank/lazyssh/providers"
 )
+
+func init() {
+	providers.Register("virtualbox", &Factory{})
+}
 
 type Factory struct{}
 

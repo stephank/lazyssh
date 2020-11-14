@@ -4,7 +4,29 @@ must conform to.
 */
 package providers
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"sync"
+
+	"github.com/hashicorp/hcl/v2"
+)
+
+var (
+	factoryMapMu sync.Mutex
+	FactoryMap   Factories
+)
+
+// Register registers a provider factory.
+func Register(id string, f Factory) {
+	factoryMapMu.Lock()
+	defer factoryMapMu.Unlock()
+	if FactoryMap == nil {
+		FactoryMap = make(map[string]Factory)
+	}
+	if _, dup := FactoryMap[id]; dup {
+		panic("Register called twice for provider " + id)
+	}
+	FactoryMap[id] = f
+}
 
 // Factory produces a Provider for a specific type of Machine, based on
 // 'target' configuration provided by the user.
