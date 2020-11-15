@@ -52,5 +52,38 @@ target "<address>" "aws_ec2" {
   # immediately when the last connection is closed.
   linger = "0s"  # The default
 
+  # Optional EBS volume configuration. This block can be repeated multiple
+  # times to configure several devices.
+  #
+  # A common use case is to set the size of the root volume. To do so, use the
+  # device name of the root volume from the AMI, and set just `volume_size`.
+  ebs_block_device {
+
+    # Name of the EBS volume. (Required)
+    device_name = "/dev/xvda"
+
+    # Whether to delete the volume on instance termination.
+    delete_on_termination = true
+
+    # Whether to encrypt the volume.
+    encrypted = false
+
+    # KMS key ID used to encrypt the volume.
+    kms_key_id = "00000000-0000-0000-0000-000000000000"
+
+    # When set, creates the volume from the given snapshot.
+    snapshot_id = "snap-00000000000000000"
+
+    # Size in GiB.
+    volume_size = 40
+
+    # Type of volume. One of: standard, gp2, io1, io2
+    volume_type = "gp2"
+
+    # Provisioned IOPS. Required for volume types `io1` and `io2`.
+    iops = 400
+
+  }
+
 }
 ```
