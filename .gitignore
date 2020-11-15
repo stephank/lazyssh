@@ -1,14 +1,16 @@
+# This file doubles as .gitignore and .dockerignore
+
 # Version control
-.git
+/.git
 
 # Build products
-lazyssh
+/lazyssh
 
 # Configuration
-*.hcl
+/*.hcl
 
 # Release builds
-lazyssh-*
+/release
 
 # Nix
-result
+/result

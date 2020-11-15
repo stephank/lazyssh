@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+# Creates release packages for all supported platforms.
+
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
@@ -14,6 +17,11 @@ extras=(
   "doc"
 )
 
+# TODO: Linux ARM builds. Need to build for variants.
+# See: https://github.com/golang/go/wiki/GoArm
+#
+# TODO: Support darwin/arm64, but that currently means iOS.
+# Need to wait for Go 1.16 in February.
 build_targets=(
   "GOOS=darwin  GOARCH=amd64"
   "GOOS=freebsd GOARCH=386  "
@@ -28,20 +36,22 @@ build_targets=(
 )
 
 set -x
+export CGO_ENABLED=0
+
 for build_target in "${build_targets[@]}"; do
   eval export $build_target
   go build .
 
   pkgname="lazyssh-${version}-${GOOS}-${GOARCH}"
-  rm -fr "${pkgname}"
-  mkdir "${pkgname}"
-  cp -r "${extras[@]}" "./${pkgname}/"
+  rm -fr "./release/${pkgname}"
+  mkdir -p "./release/${pkgname}"
+  cp -r "${extras[@]}" "./release/${pkgname}/"
 
   if [[ "${GOOS}" = "windows" ]]; then
-    mv lazyssh.exe "./${pkgname}/"
-    zip -r9 "${pkgname}.zip" "./${pkgname}"
+    mv lazyssh.exe "./release/${pkgname}/"
+    (cd ./release/ && zip -r9 "./${pkgname}.zip" "./${pkgname}")
   else
-    mv lazyssh "./${pkgname}/"
-    tar -czf "${pkgname}.tar.gz" "./${pkgname}"
+    mv lazyssh "./release/${pkgname}/"
+    (cd ./release/ && tar -czf "${pkgname}.tar.gz" "./${pkgname}")
   fi
 done

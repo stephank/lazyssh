@@ -21,6 +21,8 @@ something to avoid conflict, create an issue for it.
 
 - Multiple authorized keys.
 
+- Homebrew package
+
 - Persist state so any kind of interruption can recover management of an
   instance. (We'd still interrupt all connections, but can hopefully prevent
   accidental waste of resources this way.)
@@ -39,6 +41,8 @@ something to avoid conflict, create an issue for it.
 ## More providers
 
 - Google Cloud Compute
+
+- Microsoft Azure VM
 
 - DigitalOcean Droplets
 

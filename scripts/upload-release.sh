@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Uploads release packages created by `build-release.sh` to the matching
+# release on GitHub.
+
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
@@ -9,7 +13,7 @@ fi
 version="$1"
 
 flags=("-m" "")
-for pkg in ./lazyssh-${version}-*.{tar.gz,zip}; do
+for pkg in ./release/lazyssh-${version}-*.{tar.gz,zip}; do
   flags+=("-a" "${pkg}")
 done
 

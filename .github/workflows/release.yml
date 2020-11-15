@@ -9,6 +9,11 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
 
     - name: Set up Go
@@ -37,3 +42,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: ./scripts/upload-release.sh "${GITHUB_REF#refs/tags/}"
+
+    - name: Upload Docker images
+      env:
+        SKOPEO_AUTH: ${{ secrets.SKOPEO_AUTH }}
+      run: |
+        mkdir -p "${HOME}/.config/containers"
+        echo "${SKOPEO_AUTH}" > "${HOME}/.config/containers/auth.json"
+        ./scripts/upload-docker.sh "${GITHUB_REF#refs/tags/}"

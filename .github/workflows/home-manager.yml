@@ -39,7 +39,7 @@ jobs:
           outputs = { home-manager, lazyssh, ... }: {
             homeManagerConfiguration = home-manager.lib.homeManagerConfiguration {
               system = "x86_64-linux";
-              username = "runner";
+              username = "${USER}";
               homeDirectory = "${HOME}";
               configuration = {
                 imports = [ lazyssh.homeManagerModule ];
