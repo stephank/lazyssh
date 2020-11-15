@@ -27,15 +27,16 @@ func init() {
 type Factory struct{}
 
 type Provider struct {
-	ImageId      string
-	InstanceType types.InstanceType
-	KeyName      string
-	SubnetId     *string
-	UserData64   *string
-	CheckPort    uint16
-	Shared       bool
-	Linger       time.Duration
-	Ec2          *ec2.Client
+	BlockDeviceMappings []*types.BlockDeviceMapping
+	ImageId             string
+	InstanceType        types.InstanceType
+	KeyName             string
+	SubnetId            *string
+	UserData64          *string
+	CheckPort           uint16
+	Shared              bool
+	Linger              time.Duration
+	Ec2                 *ec2.Client
 }
 
 type state struct {
@@ -44,16 +45,28 @@ type state struct {
 }
 
 type hclTarget struct {
-	ImageId      string  `hcl:"image_id,attr"`
-	InstanceType string  `hcl:"instance_type,attr"`
-	KeyName      string  `hcl:"key_name,attr"`
-	SubnetId     *string `hcl:"subnet_id,optional"`
-	UserData     *string `hcl:"user_data,optional"`
-	Profile      *string `hcl:"profile,optional"`
-	Region       *string `hcl:"region,optional"`
-	CheckPort    uint16  `hcl:"check_port,optional"`
-	Shared       *bool   `hcl:"shared,optional"`
-	Linger       string  `hcl:"linger,optional"`
+	EbsBlockDevice []*hclEbsBlockDevice `hcl:"ebs_block_device,block"`
+	ImageId        string               `hcl:"image_id,attr"`
+	InstanceType   string               `hcl:"instance_type,attr"`
+	KeyName        string               `hcl:"key_name,attr"`
+	SubnetId       *string              `hcl:"subnet_id,optional"`
+	UserData       *string              `hcl:"user_data,optional"`
+	Profile        *string              `hcl:"profile,optional"`
+	Region         *string              `hcl:"region,optional"`
+	CheckPort      uint16               `hcl:"check_port,optional"`
+	Shared         *bool                `hcl:"shared,optional"`
+	Linger         string               `hcl:"linger,optional"`
+}
+
+type hclEbsBlockDevice struct {
+	DeviceName          string  `hcl:"device_name,attr"`
+	DeleteOnTermination *bool   `hcl:"delete_on_termination,optional"`
+	Encrypted           *bool   `hcl:"encrypted,optional"`
+	Iops                *int32  `hcl:"iops,optional"`
+	KmsKeyId            *string `hcl:"kms_key_id,optional"`
+	SnapshotId          *string `hcl:"snapshot_id,optional"`
+	VolumeSize          *int32  `hcl:"volume_size,optional"`
+	VolumeType          string  `hcl:"volume_type,optional"`
 }
 
 const requestTimeout = 30 * time.Second
@@ -120,6 +133,21 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 		})
 	}
 
+	for _, device := range parsed.EbsBlockDevice {
+		prov.BlockDeviceMappings = append(prov.BlockDeviceMappings, &types.BlockDeviceMapping{
+			DeviceName: aws.String(device.DeviceName),
+			Ebs: &types.EbsBlockDevice{
+				DeleteOnTermination: device.DeleteOnTermination,
+				Encrypted:           device.Encrypted,
+				Iops:                device.Iops,
+				KmsKeyId:            device.KmsKeyId,
+				SnapshotId:          device.SnapshotId,
+				VolumeSize:          device.VolumeSize,
+				VolumeType:          types.VolumeType(device.VolumeType),
+			},
+		})
+	}
+
 	if parsed.UserData != nil {
 		prov.UserData64 = aws.String(base64.StdEncoding.EncodeToString([]byte(*parsed.UserData)))
 	}
@@ -149,13 +177,14 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 
 	ctx, _ := context.WithTimeout(bgCtx, requestTimeout)
 	res, err := prov.Ec2.RunInstances(ctx, &ec2.RunInstancesInput{
-		MinCount:     aws.Int32(1),
-		MaxCount:     aws.Int32(1),
-		ImageId:      &prov.ImageId,
-		InstanceType: prov.InstanceType,
-		KeyName:      &prov.KeyName,
-		SubnetId:     prov.SubnetId,
-		UserData:     prov.UserData64,
+		BlockDeviceMappings: prov.BlockDeviceMappings,
+		MinCount:            aws.Int32(1),
+		MaxCount:            aws.Int32(1),
+		ImageId:             &prov.ImageId,
+		InstanceType:        prov.InstanceType,
+		KeyName:             &prov.KeyName,
+		SubnetId:            prov.SubnetId,
+		UserData:            prov.UserData64,
 	})
 	if err != nil {
 		log.Printf("EC2 instance failed to start: %s\n", err.Error())
