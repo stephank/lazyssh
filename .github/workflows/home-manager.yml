@@ -23,37 +23,19 @@ jobs:
         extra_nix_config: |
           experimental-features = nix-command flakes
 
-    - name: Test
+    - uses: cachix/cachix-action@v8
+      with:
+        name: lazyssh
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - name: Build config
       run: |
-        # Redirect stderr to stdout, because GitHub Actions is bad at
-        # preserving order between the two separate streams.
-        exec 2>&1
-
-        set -x
-        lazyssh_src="${PWD}"
-        hm_config="${HOME}/hm-config"
-        hm_build="${HOME}/hm-build"
-
-        # Prepare a directory with LazySSH and Home Manager configuration.
-        mkdir "${hm_config}"
-
-        ssh-keygen -t ed25519 -f "${hm_config}/dummy-key" < /dev/null
-
-        cat > "${hm_config}/lazyssh.hcl" << EOF
-        server {
-          host_key = <<DUMMY
-        $(<"${hm_config}/dummy-key")
-        DUMMY
-          authorized_key = <<DUMMY
-        $(<"${hm_config}/dummy-key.pub")
-        DUMMY
-        }
-        EOF
-
-        cat > "${hm_config}/flake.nix" << EOF
+        # Prepare the Nix flake with Home Manager configuration.
+        mkdir "${HOME}/hm-config"
+        cat > "${HOME}/hm-config/flake.nix" << EOF
         {
           inputs.home-manager.url = "github:nix-community/home-manager";
-          inputs.lazyssh.url = "${lazyssh_src}";
+          inputs.lazyssh.url = "${PWD}";
           outputs = { home-manager, lazyssh, ... }: {
             homeManagerConfiguration = home-manager.lib.homeManagerConfiguration {
               system = "x86_64-linux";
@@ -61,7 +43,7 @@ jobs:
               homeDirectory = "${HOME}";
               configuration = {
                 imports = [ lazyssh.homeManagerModule ];
-                services.lazyssh.configFile = "${hm_config}/lazyssh.hcl";
+                services.lazyssh.configFile = "${HOME}/lazyssh.hcl";
                 home.stateVersion = "20.09";
               };
             };
@@ -70,16 +52,37 @@ jobs:
         EOF
 
         # Build the Home Manager configuration.
-        nix build -v -o "${hm_build}" \
-          "${hm_config}#homeManagerConfiguration.activationPackage"
+        nix build -v -o "${HOME}/hm-build" \
+          "${HOME}/hm-config#homeManagerConfiguration.activationPackage"
+
+    - name: Test service
+      run: |
+        # Redirect stderr to stdout, because GitHub Actions is bad at
+        # preserving order between the two separate streams.
+        exec 2>&1
+
+        set -x
+
+        # Prepare LazySSH configuration.
+        ssh-keygen -t ed25519 -f "${HOME}/dummy-key" < /dev/null
+        cat > "${HOME}/lazyssh.hcl" << EOF
+        server {
+          host_key = <<DUMMY
+        $(<"${HOME}/dummy-key")
+        DUMMY
+          authorized_key = <<DUMMY
+        $(<"${HOME}/dummy-key.pub")
+        DUMMY
+        }
+        EOF
 
         # Start the user systemd, so Home Manager can start services.
         sudo install -d -m 0700 -o "${USER}" "/run/user/${UID}"
         export XDG_RUNTIME_DIR="/run/user/${UID}"
         sudo systemctl start "user@${UID}.service"
 
-        # Activate Home Manager and start LazySSH.
-        "${hm_build}/activate"
+        # Activate the Home Manager config and start LazySSH.
+        "${HOME}/hm-build/activate"
         systemctl --user start lazyssh.service
 
         # Verify LazySSH is running.
