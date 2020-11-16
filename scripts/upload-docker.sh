@@ -40,7 +40,7 @@ for build_arch in "${build_archs[@]}"; do
   manifests+=("${manifest}")
 
   echo "- Importing image ${manifest}"
-  tar -cC ./release/lazyssh-0.0-linux-${PKGARCH} lazyssh \
+  tar -cC ./release/lazyssh-${version}-linux-${PKGARCH} lazyssh \
     | docker import --change 'CMD ["/lazyssh"]' - "${manifest}"
 
   echo "- Pushing image ${manifest}"
