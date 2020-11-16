@@ -19,9 +19,13 @@ something to avoid conflict, create an issue for it.
 
 - Socket activation
 
-- Multiple authorized keys.
+- Multiple authorized keys
 
 - Homebrew package
+
+- Test if Windows works at all (we already have binaries, just never tried)
+
+- Windows Docker images
 
 - Persist state so any kind of interruption can recover management of an
   instance. (We'd still interrupt all connections, but can hopefully prevent
