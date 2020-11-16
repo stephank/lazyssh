@@ -28,8 +28,18 @@ License: AGPL v3
 
 ## Usage
 
-Grab a binary from the [releases page]. If you instead want to build LazySSH
-yourself, you need at least Go 1.13, then just `go build`.
+There are several ways to get LazySSH:
+
+- Grab a binary from the [releases page].
+
+- Docker images are available on Docker Hub as
+  [stephank/lazyssh](https://hub.docker.com/r/stephank/lazyssh).
+
+- Nix users, whether you use flakes or not, see the documentation in
+  [flake.nix](./flake.nix).
+
+- If you instead want to build LazySSH yourself, you need at least Go 1.13,
+  then just `go build`.
 
 [releases page]: https://github.com/stephank/lazyssh/releases
 
@@ -72,6 +82,15 @@ Once your config is ready, you can start the server:
 ```sh
 ./lazyssh -config ./config.hcl
 ```
+
+> Using Docker? You can start the container with, for example:
+>
+> ```sh
+> docker run \
+>   -p 7922:7922 \
+>   -v /path/to/config.hcl:/config.hcl:ro \
+>   stephank/lazyssh
+> ```
 
 You usually need an entry for LazySSH in your `~/.ssh/config`, because the
 `ssh` command otherwise doesn't make all options available for jump-hosts. Here
