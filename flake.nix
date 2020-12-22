@@ -39,110 +39,102 @@
   inputs.nixpkgs.url = github:NixOS/nixpkgs/nixpkgs-unstable;
 
   outputs = { self, nixpkgs }:
-    let
+  with nixpkgs.lib;
+  let
 
-      # mkPackage builds the LazySSH derivation. Function over Nixpkgs.
-      mkPackage = { buildGoModule, ... }:
-        buildGoModule {
-          name = "lazyssh";
-          src = ./.;
-          vendorSha256 = "F6Z/ESmSZ5v/Recp4BcAvOvwgmAlJAuf9vrelGGyjYg=";
-        };
-
-      # mkModuleOptions builds the common module options.
-      # Function over the Nixpkgs library.
-      mkModuleOptions = lib: with lib; {
-        configFile = mkOption {
-          description = "Configuration file to use.";
-          type = types.str;
-        };
+    # Common options for NixOS, nix-darwin and home-manager modules.
+    moduleOptions = {
+      configFile = mkOption {
+        description = "Configuration file to use.";
+        type = types.str;
       };
-
-      # mkCmd builds the LazySSH command-line for running it as a service.
-      # Function over Nixpkgs (with overlay) and the config file.
-      mkCmd = { lazyssh, ... }: configFile:
-        [ "${lazyssh}/bin/lazyssh" "-config" configFile ];
-
-    in {
-
-      # Stand-alone LazySSH package.
-      defaultPackage = nixpkgs.lib.mapAttrs (system: pkgs:
-        mkPackage pkgs
-      ) nixpkgs.legacyPackages;
-
-      # Nixpkgs overlay that defines LazySSH.
-      overlay = self: super: {
-        lazyssh = mkPackage super;
-      };
-
-      # NixOS module to run LazySSH as a systemd service.
-      #
-      # Note that this creates a dedicated `lazyssh` user. If you'd rather run
-      # LazySSH within your personal user account, the home-manager module is
-      # preferred.
-      #
-      # Alternatively, use the Nixpkgs overlay and manually setup the service
-      # however you want.
-      nixosModule = { config, lib, pkgs, ... }:
-        let cfg = config.services.lazyssh;
-        in {
-          options.services.lazyssh = mkModuleOptions lib;
-          config = {
-            nixpkgs.overlays = [ self.overlay ];
-            users.users.lazyssh.isSystemUser = true;
-            systemd.services.lazyssh = {
-              description = "LazySSH";
-              wantedBy = [ "multi-user.target" ];
-              after = [ "network.target" ];
-              serviceConfig = {
-                ExecStart = lib.escapeShellArgs (mkCmd pkgs cfg.configFile);
-                Restart = "on-failure";
-                User = "lazyssh";
-              };
-            };
-          };
-        };
-
-      # Nix-darwin module to run LazySSH as a launchd user agent.
-      darwinModule = { config, lib, pkgs, ... }:
-        let cfg = config.services.lazyssh;
-        in {
-          options.services.lazyssh = mkModuleOptions lib;
-          config = {
-            nixpkgs.overlays = [ self.overlay ];
-            launchd.user.agents.lazyssh = {
-              serviceConfig = {
-                ProgramArguments = mkCmd pkgs cfg.configFile;
-                RunAtLoad = true;
-                KeepAlive = true;
-              };
-            };
-          };
-        };
-
-      # Home-manager module to run LazySSH as a systemd user service.
-      #
-      # This only works on Linux. On Mac, the nix-darwin module is perferred.
-      #
-      # Alternatively, use the Nixpkgs overlay and manually setup the service
-      # however you want.
-      homeManagerModule = { config, lib, pkgs, ... }:
-        let cfg = config.services.lazyssh;
-        in {
-          options.services.lazyssh = mkModuleOptions lib;
-          config = {
-            nixpkgs.overlays = [ self.overlay ];
-            systemd.user.services.lazyssh = {
-              Unit.Description = "LazySSH";
-              Service = {
-                ExecStart = lib.escapeShellArgs (mkCmd pkgs cfg.configFile);
-                Restart = "on-failure";
-              };
-              Install.WantedBy = [ "default.target" ];
-            };
-          };
-        };
-
     };
+
+    # mkCmd builds the LazySSH command-line for running it as a service.
+    mkCmd = system: configFile:
+      [ "${self.defaultPackage.${system}}/bin/lazyssh" "-config" configFile ];
+
+  in {
+
+    # Stand-alone LazySSH package, for all supported systems.
+    defaultPackage = mapAttrs (system: pkgs:
+      pkgs.buildGoModule {
+        name = "lazyssh";
+        src = ./.;
+        vendorSha256 = "F6Z/ESmSZ5v/Recp4BcAvOvwgmAlJAuf9vrelGGyjYg=";
+      }
+    ) nixpkgs.legacyPackages;
+
+    # Nixpkgs overlay that defines LazySSH.
+    overlay = overlaySelf: overlaySuper: {
+      lazyssh = self.defaultPackage.${overlaySuper.system};
+    };
+
+    # NixOS module to run LazySSH as a systemd service.
+    #
+    # Note that this creates a dedicated `lazyssh` user. If you'd rather run
+    # LazySSH within your personal user account, the home-manager module is
+    # preferred.
+    #
+    # Alternatively, use the Nixpkgs overlay and manually setup the service
+    # however you want.
+    nixosModule = { config, pkgs, ... }:
+    let cfg = config.services.lazyssh;
+    in {
+      options.services.lazyssh = moduleOptions;
+      config = {
+        users.users.lazyssh.isSystemUser = true;
+        systemd.services.lazyssh = {
+          description = "LazySSH";
+          wantedBy = [ "multi-user.target" ];
+          after = [ "network.target" ];
+          serviceConfig = {
+            ExecStart = escapeShellArgs (mkCmd pkgs.system cfg.configFile);
+            Restart = "on-failure";
+            User = "lazyssh";
+          };
+        };
+      };
+    };
+
+    # Nix-darwin module to run LazySSH as a launchd user agent.
+    darwinModule = { config, pkgs, ... }:
+    let cfg = config.services.lazyssh;
+    in {
+      options.services.lazyssh = moduleOptions;
+      config = {
+        launchd.user.agents.lazyssh = {
+          serviceConfig = {
+            ProgramArguments = mkCmd pkgs.system cfg.configFile;
+            RunAtLoad = true;
+            KeepAlive = true;
+          };
+        };
+      };
+    };
+
+    # Home-manager module to run LazySSH as a systemd user service.
+    #
+    # This only works on Linux. On Mac, the nix-darwin module is perferred.
+    #
+    # Alternatively, use the Nixpkgs overlay and manually setup the service
+    # however you want.
+    homeManagerModule = { config, pkgs, ... }:
+    let cfg = config.services.lazyssh;
+    in {
+      options.services.lazyssh = moduleOptions;
+      config = {
+        systemd.user.services.lazyssh = {
+          Unit.Description = "LazySSH";
+          Service = {
+            ExecStart = escapeShellArgs (mkCmd pkgs.system cfg.configFile);
+            Restart = "on-failure";
+          };
+          Install.WantedBy = [ "default.target" ];
+        };
+      };
+    };
+
+  };
 
 }
