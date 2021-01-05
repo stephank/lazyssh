@@ -28,6 +28,7 @@ type Factory struct{}
 
 type Provider struct {
 	BlockDeviceMappings []*types.BlockDeviceMapping
+	IamInstanceProfile  *types.IamInstanceProfileSpecification
 	ImageId             string
 	InstanceType        types.InstanceType
 	KeyName             string
@@ -45,17 +46,18 @@ type state struct {
 }
 
 type hclTarget struct {
-	EbsBlockDevice []*hclEbsBlockDevice `hcl:"ebs_block_device,block"`
-	ImageId        string               `hcl:"image_id,attr"`
-	InstanceType   string               `hcl:"instance_type,attr"`
-	KeyName        string               `hcl:"key_name,attr"`
-	SubnetId       *string              `hcl:"subnet_id,optional"`
-	UserData       *string              `hcl:"user_data,optional"`
-	Profile        *string              `hcl:"profile,optional"`
-	Region         *string              `hcl:"region,optional"`
-	CheckPort      uint16               `hcl:"check_port,optional"`
-	Shared         *bool                `hcl:"shared,optional"`
-	Linger         string               `hcl:"linger,optional"`
+	EbsBlockDevice     []*hclEbsBlockDevice `hcl:"ebs_block_device,block"`
+	ImageId            string               `hcl:"image_id,attr"`
+	InstanceType       string               `hcl:"instance_type,attr"`
+	KeyName            string               `hcl:"key_name,attr"`
+	SubnetId           *string              `hcl:"subnet_id,optional"`
+	UserData           *string              `hcl:"user_data,optional"`
+	IamInstanceProfile string               `hcl:"iam_instance_profile,optional"`
+	Profile            *string              `hcl:"profile,optional"`
+	Region             *string              `hcl:"region,optional"`
+	CheckPort          uint16               `hcl:"check_port,optional"`
+	Shared             *bool                `hcl:"shared,optional"`
+	Linger             string               `hcl:"linger,optional"`
 }
 
 type hclEbsBlockDevice struct {
@@ -152,6 +154,12 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 		prov.UserData64 = aws.String(base64.StdEncoding.EncodeToString([]byte(*parsed.UserData)))
 	}
 
+	if parsed.IamInstanceProfile != "" {
+		prov.IamInstanceProfile = &types.IamInstanceProfileSpecification{
+			Name: aws.String(parsed.IamInstanceProfile),
+		}
+	}
+
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -185,6 +193,7 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 		KeyName:             &prov.KeyName,
 		SubnetId:            prov.SubnetId,
 		UserData:            prov.UserData64,
+		IamInstanceProfile:  prov.IamInstanceProfile,
 	})
 	if err != nil {
 		log.Printf("EC2 instance failed to start: %s\n", err.Error())

@@ -31,6 +31,9 @@ target "<address>" "aws_ec2" {
     packages: [jq]
   EOF
 
+  # Optional name of an IAM instance profile.
+  iam_instance_profile = "example"
+
   # Optional alternate profile to use from local AWS configuration.
   profile = "default"  # The default
 
