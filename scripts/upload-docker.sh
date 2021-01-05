@@ -33,6 +33,8 @@ build_archs=(
   "ARCH=s390x    VARIANT=   PKGARCH=s390x   "
 )
 
+export DOCKER_CLI_EXPERIMENTAL=enabled
+
 manifests=()
 for build_arch in "${build_archs[@]}"; do
   eval ${build_arch}
