@@ -62,7 +62,7 @@ target "<address>" "aws_ec2" {
   # device name of the root volume from the AMI, and set just `volume_size`.
   ebs_block_device {
 
-    # Name of the EBS volume. (Required)
+    # Name of the device. (Required)
     device_name = "/dev/xvda"
 
     # Whether to delete the volume on instance termination.
@@ -85,6 +85,18 @@ target "<address>" "aws_ec2" {
 
     # Provisioned IOPS. Required for volume types `io1` and `io2`.
     iops = 400
+
+  }
+
+  # Optional existing EBS volumes to attach, once the machine is running. This
+  # block can be repeated multiple times to attach multiple volumes.
+  attach_volume {
+
+    # Name of the device. (Required)
+    device_name = "/dev/xvda"
+
+    # ID of an existing EBS volume to attach. (Required)
+    volume_id = ""
 
   }
 
