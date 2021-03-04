@@ -28,6 +28,7 @@ type Factory struct{}
 
 type Provider struct {
 	BlockDeviceMappings []*types.BlockDeviceMapping
+	AttachVolumes       []*ec2.AttachVolumeInput
 	IamInstanceProfile  *types.IamInstanceProfileSpecification
 	ImageId             string
 	InstanceType        types.InstanceType
@@ -47,6 +48,7 @@ type state struct {
 
 type hclTarget struct {
 	EbsBlockDevice     []*hclEbsBlockDevice `hcl:"ebs_block_device,block"`
+	AttachVolumes      []*hclVolume         `hcl:"attach_volume,block"`
 	ImageId            string               `hcl:"image_id,attr"`
 	InstanceType       string               `hcl:"instance_type,attr"`
 	KeyName            string               `hcl:"key_name,attr"`
@@ -69,6 +71,11 @@ type hclEbsBlockDevice struct {
 	SnapshotId          *string `hcl:"snapshot_id,optional"`
 	VolumeSize          *int32  `hcl:"volume_size,optional"`
 	VolumeType          string  `hcl:"volume_type,optional"`
+}
+
+type hclVolume struct {
+	DeviceName string `hcl:"device_name,attr"`
+	VolumeId   string `hcl:"volume_id,optional"`
 }
 
 const requestTimeout = 30 * time.Second
@@ -150,6 +157,13 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 		})
 	}
 
+	for _, volume := range parsed.AttachVolumes {
+		prov.AttachVolumes = append(prov.AttachVolumes, &ec2.AttachVolumeInput{
+			Device:   aws.String(volume.DeviceName),
+			VolumeId: aws.String(volume.VolumeId),
+		})
+	}
+
 	if parsed.UserData != nil {
 		prov.UserData64 = aws.String(base64.StdEncoding.EncodeToString([]byte(*parsed.UserData)))
 	}
@@ -228,6 +242,17 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 	}
 
 	log.Printf("EC2 instance '%s' is running\n", *inst.InstanceId)
+
+	// We're running, we can attach the volumes
+	for _, v := range prov.AttachVolumes {
+		v.InstanceId = inst.InstanceId
+		_, err := prov.Ec2.AttachVolume(ctx, v)
+		if err != nil {
+			fmt.Printf("Error in attaching volume: %v\n", err)
+			return false
+		}
+	}
+
 	mach.State = &state{
 		id:   *inst.InstanceId,
 		addr: inst.PublicIpAddress,
