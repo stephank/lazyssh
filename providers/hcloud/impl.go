@@ -45,7 +45,6 @@ type state struct {
 
 type hclTarget struct {
 	Token      string            `hcl:"token,attr"`
-	Name       string            `hcl:"name,attr"`
 	Image      string            `hcl:"image,attr"`
 	ServerType string            `hcl:"server_type,attr"`
 	SSHKey     string            `hcl:"ssh_key,attr"`
@@ -73,7 +72,7 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 
 	prov := &Provider{
 		HCloud:     client,
-		Name:       parsed.Name,
+		Name:       target,
 		Image:      parsed.Image,
 		ServerType: parsed.ServerType,
 		SSHKey:     parsed.SSHKey,
