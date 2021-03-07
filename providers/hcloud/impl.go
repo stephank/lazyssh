@@ -5,6 +5,7 @@ package hcloud
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ func init() {
 type Factory struct{}
 
 type Provider struct {
+	Name       string
 	Image      string
 	ServerType string
 	SSHKey     string
@@ -43,6 +45,7 @@ type state struct {
 
 type hclTarget struct {
 	Token      string            `hcl:"token,attr"`
+	Name       string            `hcl:"name,attr"`
 	Image      string            `hcl:"image,attr"`
 	ServerType string            `hcl:"server_type,attr"`
 	SSHKey     string            `hcl:"ssh_key,attr"`
@@ -70,6 +73,7 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 
 	prov := &Provider{
 		HCloud:     client,
+		Name:       parsed.Name,
 		Image:      parsed.Image,
 		ServerType: parsed.ServerType,
 		SSHKey:     parsed.SSHKey,
@@ -174,7 +178,7 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 	}
 
 	opts := hcloud.ServerCreateOpts{
-		Name:             "lazyssh",
+		Name:             randomName(prov.Name),
 		ServerType:       serverType,
 		Image:            image,
 		SSHKeys:          []*hcloud.SSHKey{sshKey},
@@ -219,6 +223,17 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 		addr: &address,
 	}
 	return true
+}
+
+func randomName(p string) string {
+	var n = 5
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	s := make([]rune, n)
+	for i := range s {
+		s[i] = letters[rand.Intn(len(letters))]
+	}
+	return fmt.Sprintf("%s-%s", p, string(s))
 }
 
 func serverIsStarting(server *hcloud.Server) bool {

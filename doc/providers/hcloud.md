@@ -10,6 +10,10 @@ target "<address>" "hcloud" {
   # The API token to use. (Required)
   token = "9vx8w..."
 
+  # The name of the server to launch. Will be
+  # suffixed by a random string. (Required)
+  name = "lazyssh-ubuntu"
+
   # The image to launch. (Required)
   image = "ubuntu-20.03"
 
