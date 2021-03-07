@@ -132,6 +132,9 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 	// We must get the image from API
 	ctx, _ := context.WithTimeout(bgCtx, requestTimeout)
 	image, _, err := prov.HCloud.Image.Get(ctx, prov.Image)
+	if image == nil && err == nil {
+		err = fmt.Errorf("image '%s' not found", prov.Image)
+	}
 	if err != nil {
 		log.Printf("HCloud server failed to start: %s\n", err.Error())
 		return false
@@ -139,6 +142,9 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 	// We must get the server type from API
 	ctx, _ = context.WithTimeout(bgCtx, requestTimeout)
 	serverType, _, err := prov.HCloud.ServerType.Get(ctx, prov.ServerType)
+	if serverType == nil && err == nil {
+		err = fmt.Errorf("server type '%s' not found", prov.ServerType)
+	}
 	if err != nil {
 		log.Printf("HCloud server failed to start: %s\n", err.Error())
 		return false
@@ -146,6 +152,9 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 	// We must get the SSH key from API
 	ctx, _ = context.WithTimeout(bgCtx, requestTimeout)
 	sshKey, _, err := prov.HCloud.SSHKey.Get(ctx, prov.SSHKey)
+	if sshKey == nil && err == nil {
+		err = fmt.Errorf("ssh key '%s' not found", prov.SSHKey)
+	}
 	if err != nil {
 		log.Printf("HCloud server failed to start: %s\n", err.Error())
 		return false
@@ -153,6 +162,9 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 	// We must get the Location from API
 	ctx, _ = context.WithTimeout(bgCtx, requestTimeout)
 	location, _, err := prov.HCloud.Location.Get(ctx, prov.Location)
+	if location == nil && err == nil {
+		err = fmt.Errorf("location '%s' not found", prov.Location)
+	}
 	if err != nil {
 		log.Printf("HCloud server failed to start: %s\n", err.Error())
 		return false
@@ -216,8 +228,11 @@ func (prov *Provider) stop(mach *providers.Machine) {
 	bgCtx := context.Background()
 	ctx, _ := context.WithTimeout(bgCtx, requestTimeout)
 	server, _, err := prov.HCloud.Server.GetByName(ctx, state.id)
+	if server == nil && err == nil {
+		err = fmt.Errorf("server '%s' not found", state.id)
+	}
 	if err != nil {
-		log.Printf("HCloud server '%s' not found: %s\n", state.id, err.Error())
+		log.Printf("HCloud server '%s' failed to stop: %s\n", state.id, err.Error())
 		return
 	}
 	ctx, _ = context.WithTimeout(bgCtx, requestTimeout)
