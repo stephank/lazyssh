@@ -16,6 +16,7 @@ import (
 	"github.com/stephank/lazyssh/providers"
 	_ "github.com/stephank/lazyssh/providers/aws_ec2"
 	_ "github.com/stephank/lazyssh/providers/forward"
+	_ "github.com/stephank/lazyssh/providers/hcloud"
 	_ "github.com/stephank/lazyssh/providers/virtualbox"
 	"golang.org/x/crypto/ssh"
 )

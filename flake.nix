@@ -61,7 +61,7 @@
       pkgs.buildGoModule {
         name = "lazyssh";
         src = ./.;
-        vendorSha256 = "F6Z/ESmSZ5v/Recp4BcAvOvwgmAlJAuf9vrelGGyjYg=";
+        vendorSha256 = "h3YZz9TRPJgu0kHbC8D4u+uHQnBMf8VbteyoSiypjEM=";
       }
     ) nixpkgs.legacyPackages;
 
