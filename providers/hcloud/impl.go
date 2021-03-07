@@ -29,6 +29,7 @@ type Provider struct {
 	SSHKey     string
 	UserData   string
 	Location   string
+	Labels     map[string]string
 	Shared     bool
 	CheckPort  uint16
 	Linger     time.Duration
@@ -41,15 +42,16 @@ type state struct {
 }
 
 type hclTarget struct {
-	Token      string `hcl:"token,attr"`
-	Image      string `hcl:"image,attr"`
-	ServerType string `hcl:"server_type,attr"`
-	SSHKey     string `hcl:"ssh_key,attr"`
-	Location   string `hcl:"location,attr"`
-	UserData   string `hcl:"user_data,optional"`
-	CheckPort  uint16 `hcl:"check_port,optional"`
-	Shared     *bool  `hcl:"shared,optional"`
-	Linger     string `hcl:"linger,optional"`
+	Token      string            `hcl:"token,attr"`
+	Image      string            `hcl:"image,attr"`
+	ServerType string            `hcl:"server_type,attr"`
+	SSHKey     string            `hcl:"ssh_key,attr"`
+	Location   string            `hcl:"location,attr"`
+	UserData   string            `hcl:"user_data,optional"`
+	Labels     map[string]string `hcl:"labels,optional"`
+	CheckPort  uint16            `hcl:"check_port,optional"`
+	Shared     *bool             `hcl:"shared,optional"`
+	Linger     string            `hcl:"linger,optional"`
 }
 
 const requestTimeout = 30 * time.Second
@@ -72,6 +74,7 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 		ServerType: parsed.ServerType,
 		SSHKey:     parsed.SSHKey,
 		Location:   parsed.Location,
+		Labels:     parsed.Labels,
 		UserData:   strings.Replace(parsed.UserData, "\n", "\\n", -1),
 	}
 
@@ -177,6 +180,7 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 		SSHKeys:          []*hcloud.SSHKey{sshKey},
 		Location:         location,
 		UserData:         prov.UserData,
+		Labels:           prov.Labels,
 		StartAfterCreate: hcloud.Bool(true),
 	}
 

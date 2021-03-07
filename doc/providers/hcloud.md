@@ -22,11 +22,16 @@ target "<address>" "hcloud" {
   # Name of the location to launch server in. (Required)
   location = "nbg1"
 
-  # Optional user data to provide to the instance.
+  # Optional user data to provide to the server.
   user_data = <<-EOF
     #cloud-config
     packages: [jq]
   EOF
+
+  # Optional labels to add to the server.
+  labels = {
+    "created_by" = "lazyssh"
+  }
 
   # LazySSH waits for this TCP port to be open before forwarding connections to
   # the hcloud server.
