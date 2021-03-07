@@ -34,6 +34,7 @@ type Provider struct {
 	ImageId             string
 	InstanceType        types.InstanceType
 	KeyName             string
+	Placement           *types.Placement
 	SubnetId            *string
 	UserData64          *string
 	CheckPort           uint16
@@ -50,6 +51,7 @@ type state struct {
 type hclTarget struct {
 	EbsBlockDevice     []*hclEbsBlockDevice `hcl:"ebs_block_device,block"`
 	AttachVolumes      []*hclVolume         `hcl:"attach_volume,block"`
+	Placement          *hclPlacement        `hcl:"placement,block"`
 	ImageId            string               `hcl:"image_id,attr"`
 	InstanceType       string               `hcl:"instance_type,attr"`
 	KeyName            string               `hcl:"key_name,attr"`
@@ -77,6 +79,11 @@ type hclEbsBlockDevice struct {
 type hclVolume struct {
 	DeviceName string `hcl:"device_name,attr"`
 	VolumeId   string `hcl:"volume_id,optional"`
+}
+
+// See https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_Placement.html
+type hclPlacement struct {
+	AvailabilityZone string `hcl:"availability_zone,optional"`
 }
 
 var errAttachVolume = errors.New("failed to attach volume")
@@ -168,6 +175,11 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 		})
 	}
 
+	prov.Placement = &types.Placement{}
+	if parsed.Placement != nil {
+		prov.Placement.AvailabilityZone = aws.String(parsed.Placement.AvailabilityZone)
+	}
+
 	if parsed.UserData != nil {
 		prov.UserData64 = aws.String(base64.StdEncoding.EncodeToString([]byte(*parsed.UserData)))
 	}
@@ -220,6 +232,7 @@ func (prov *Provider) start(mach *providers.Machine) (bool, error) {
 		SubnetId:            prov.SubnetId,
 		UserData:            prov.UserData64,
 		IamInstanceProfile:  prov.IamInstanceProfile,
+		Placement:           prov.Placement,
 	})
 	if err != nil {
 		log.Printf("EC2 instance failed to start: %s\n", err.Error())
