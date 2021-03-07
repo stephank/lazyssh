@@ -75,6 +75,7 @@ types of targets currently supported, and links to the documentation:
 
 - [AWS EC2](./doc/providers/aws_ec2.md)
 - [VirtualBox](./doc/providers/virtualbox.md)
+- [Hetzner Cloud](./doc/providers/hcloud.md)
 - [Dummy forwarding](./doc/providers/forward.md)
 
 Once your config is ready, you can start the server:
