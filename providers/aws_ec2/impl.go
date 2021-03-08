@@ -87,7 +87,6 @@ type hclPlacement struct {
 }
 
 var errAttachVolume = errors.New("failed to attach volume")
-var errUnknown = errors.New("something broke")
 
 const requestTimeout = 30 * time.Second
 
