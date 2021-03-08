@@ -206,6 +206,7 @@ func (prov *Provider) RunMachine(mach *providers.Machine) {
 		fmt.Printf("Error in Attaching Volumes. Stopping instance\n")
 		prov.stop(mach)
 	} else if err != nil {
+		fmt.Printf("Error in starting machine: %v\n", err)
 		return
 	}
 
