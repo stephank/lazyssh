@@ -201,24 +201,23 @@ func (prov *Provider) IsShared() bool {
 }
 
 func (prov *Provider) RunMachine(mach *providers.Machine) {
-	ok, err := prov.start(mach)
-	if errors.Is(err, errAttachVolume) {
-		fmt.Printf("Error in Attaching Volumes. Stopping instance\n")
-		prov.stop(mach)
-	} else if err != nil {
-		fmt.Printf("Error in starting machine: %v\n", err)
+	if err := prov.start(mach); err != nil {
+		if errors.Is(err, errAttachVolume) {
+			fmt.Printf("Error in Attaching Volumes. Stopping instance\n")
+			prov.stop(mach)
+		} else {
+			fmt.Printf("Error in starting machine: %v\n", err)
+		}
 		return
 	}
 
-	if ok {
-		if prov.connectivityTest(mach) {
-			prov.msgLoop(mach)
-		}
-		prov.stop(mach)
+	if prov.connectivityTest(mach) {
+		prov.msgLoop(mach)
 	}
+	prov.stop(mach)
 }
 
-func (prov *Provider) start(mach *providers.Machine) (bool, error) {
+func (prov *Provider) start(mach *providers.Machine) error {
 	bgCtx := context.Background()
 
 	ctx, _ := context.WithTimeout(bgCtx, requestTimeout)
@@ -236,7 +235,7 @@ func (prov *Provider) start(mach *providers.Machine) (bool, error) {
 	})
 	if err != nil {
 		log.Printf("EC2 instance failed to start: %s\n", err.Error())
-		return false, nil
+		return nil
 	}
 
 	inst := res.Instances[0]
@@ -251,11 +250,11 @@ func (prov *Provider) start(mach *providers.Machine) (bool, error) {
 		})
 		if err != nil {
 			log.Printf("Could not check EC2 instance '%s' state: %s\n", *inst.InstanceId, err.Error())
-			return false, nil
+			return nil
 		}
 		if res.Reservations == nil || res.Reservations[0].Instances == nil {
 			log.Printf("EC2 instance '%s' disappeared while waiting for it to start\n", *inst.InstanceId)
-			return false, nil
+			return nil
 		}
 
 		inst = res.Reservations[0].Instances[0]
@@ -263,7 +262,7 @@ func (prov *Provider) start(mach *providers.Machine) (bool, error) {
 
 	if inst.State.Name != "running" {
 		log.Printf("EC2 instance '%s' in unexpected state '%s'\n", *inst.InstanceId, inst.State.Name)
-		return false, nil
+		return nil
 	}
 
 	log.Printf("EC2 instance '%s' is running\n", *inst.InstanceId)
@@ -279,11 +278,11 @@ func (prov *Provider) start(mach *providers.Machine) (bool, error) {
 		_, err := prov.Ec2.AttachVolume(ctx, v)
 		if err != nil {
 			fmt.Printf("Error in attaching volume: %v\n", err)
-			return false, fmt.Errorf("%w: %v", errAttachVolume, err)
+			return fmt.Errorf("%w: %v", errAttachVolume, err)
 		}
 	}
 
-	return true, nil
+	return nil
 }
 
 func (prov *Provider) stop(mach *providers.Machine) {
