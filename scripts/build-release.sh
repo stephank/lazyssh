@@ -20,12 +20,11 @@ extras=(
 
 # Build variants.
 #
-# PKGARCH here matches Docker naming for convenience.
-#
-# TODO: Support darwin/arm64, but that currently means iOS.
-# Need to wait for Go 1.16 in February.
+# PKGARCH here matches Docker naming on Linux, for convenience when used
+# together with `upload-docker.sh`.
 build_targets=(
   "GOOS=darwin  GOARCH=amd64       PKGARCH=amd64   "
+  "GOOS=darwin  GOARCH=arm64       PKGARCH=arm64   "
   "GOOS=freebsd GOARCH=386         PKGARCH=386     "
   "GOOS=freebsd GOARCH=amd64       PKGARCH=amd64   "
   "GOOS=linux   GOARCH=386         PKGARCH=386     "
