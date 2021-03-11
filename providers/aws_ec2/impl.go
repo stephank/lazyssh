@@ -4,6 +4,7 @@ package aws_ec2
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -33,6 +34,7 @@ type Provider struct {
 	ImageId             string
 	InstanceType        types.InstanceType
 	KeyName             string
+	Placement           *types.Placement
 	SubnetId            *string
 	UserData64          *string
 	CheckPort           uint16
@@ -49,6 +51,7 @@ type state struct {
 type hclTarget struct {
 	EbsBlockDevice     []*hclEbsBlockDevice `hcl:"ebs_block_device,block"`
 	AttachVolumes      []*hclVolume         `hcl:"attach_volume,block"`
+	Placement          *hclPlacement        `hcl:"placement,block"`
 	ImageId            string               `hcl:"image_id,attr"`
 	InstanceType       string               `hcl:"instance_type,attr"`
 	KeyName            string               `hcl:"key_name,attr"`
@@ -77,6 +80,13 @@ type hclVolume struct {
 	DeviceName string `hcl:"device_name,attr"`
 	VolumeId   string `hcl:"volume_id,optional"`
 }
+
+// See https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_Placement.html
+type hclPlacement struct {
+	AvailabilityZone string `hcl:"availability_zone,optional"`
+}
+
+var errAttachVolume = errors.New("failed to attach volume")
 
 const requestTimeout = 30 * time.Second
 
@@ -164,6 +174,11 @@ func (factory *Factory) NewProvider(target string, hclBlock hcl.Body) (providers
 		})
 	}
 
+	prov.Placement = &types.Placement{}
+	if parsed.Placement != nil {
+		prov.Placement.AvailabilityZone = aws.String(parsed.Placement.AvailabilityZone)
+	}
+
 	if parsed.UserData != nil {
 		prov.UserData64 = aws.String(base64.StdEncoding.EncodeToString([]byte(*parsed.UserData)))
 	}
@@ -186,7 +201,16 @@ func (prov *Provider) IsShared() bool {
 }
 
 func (prov *Provider) RunMachine(mach *providers.Machine) {
-	if prov.start(mach) {
+	ok, err := prov.start(mach)
+	if errors.Is(err, errAttachVolume) {
+		fmt.Printf("Error in Attaching Volumes. Stopping instance\n")
+		prov.stop(mach)
+	} else if err != nil {
+		fmt.Printf("Error in starting machine: %v\n", err)
+		return
+	}
+
+	if ok {
 		if prov.connectivityTest(mach) {
 			prov.msgLoop(mach)
 		}
@@ -194,7 +218,7 @@ func (prov *Provider) RunMachine(mach *providers.Machine) {
 	}
 }
 
-func (prov *Provider) start(mach *providers.Machine) bool {
+func (prov *Provider) start(mach *providers.Machine) (bool, error) {
 	bgCtx := context.Background()
 
 	ctx, _ := context.WithTimeout(bgCtx, requestTimeout)
@@ -208,10 +232,11 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 		SubnetId:            prov.SubnetId,
 		UserData:            prov.UserData64,
 		IamInstanceProfile:  prov.IamInstanceProfile,
+		Placement:           prov.Placement,
 	})
 	if err != nil {
 		log.Printf("EC2 instance failed to start: %s\n", err.Error())
-		return false
+		return false, nil
 	}
 
 	inst := res.Instances[0]
@@ -226,11 +251,11 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 		})
 		if err != nil {
 			log.Printf("Could not check EC2 instance '%s' state: %s\n", *inst.InstanceId, err.Error())
-			return false
+			return false, nil
 		}
 		if res.Reservations == nil || res.Reservations[0].Instances == nil {
 			log.Printf("EC2 instance '%s' disappeared while waiting for it to start\n", *inst.InstanceId)
-			return false
+			return false, nil
 		}
 
 		inst = res.Reservations[0].Instances[0]
@@ -238,10 +263,15 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 
 	if inst.State.Name != "running" {
 		log.Printf("EC2 instance '%s' in unexpected state '%s'\n", *inst.InstanceId, inst.State.Name)
-		return false
+		return false, nil
 	}
 
 	log.Printf("EC2 instance '%s' is running\n", *inst.InstanceId)
+
+	mach.State = &state{
+		id:   *inst.InstanceId,
+		addr: inst.PublicIpAddress,
+	}
 
 	// We're running, we can attach the volumes
 	for _, v := range prov.AttachVolumes {
@@ -249,15 +279,11 @@ func (prov *Provider) start(mach *providers.Machine) bool {
 		_, err := prov.Ec2.AttachVolume(ctx, v)
 		if err != nil {
 			fmt.Printf("Error in attaching volume: %v\n", err)
-			return false
+			return false, fmt.Errorf("%w: %v", errAttachVolume, err)
 		}
 	}
 
-	mach.State = &state{
-		id:   *inst.InstanceId,
-		addr: inst.PublicIpAddress,
-	}
-	return true
+	return true, nil
 }
 
 func (prov *Provider) stop(mach *providers.Machine) {

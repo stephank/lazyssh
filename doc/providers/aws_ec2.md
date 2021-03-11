@@ -88,8 +88,16 @@ target "<address>" "aws_ec2" {
 
   }
 
+  # Control where the instance launches. Optional, but needed if you attach a
+  # volume.
+  placement {
+    availability_zone = "us-west-2d"
+  }
+
   # Optional existing EBS volumes to attach, once the machine is running. This
   # block can be repeated multiple times to attach multiple volumes.
+  # Note that you can only attach a volume to an instance in the same AZ,
+  # so you likely want to set the placement attribute as well.
   attach_volume {
 
     # Name of the device. (Required)
