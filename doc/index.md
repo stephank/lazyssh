@@ -56,4 +56,5 @@ Target types and their settings are documented separately:
 
 - [AWS EC2](./providers/aws_ec2.md)
 - [VirtualBox](./providers/virtualbox.md)
+- [Hetzner Cloud](./providers/hcloud.md)
 - [Dummy forwarding](./providers/forward.md)
